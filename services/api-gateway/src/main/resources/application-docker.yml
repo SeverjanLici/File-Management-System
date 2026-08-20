@@ -1,0 +1,46 @@
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: user-service
+          uri: http://user-service:8081
+          predicates:
+            - Path=/api/v1/users/**,/api/v1/departments/**,/api/v1/roles/**
+          filters:
+            - StripPrefix=0
+
+        - id: document-service
+          uri: http://document-service:8082
+          predicates:
+            - Path=/api/v1/documents/**
+          filters:
+            - StripPrefix=0
+
+        - id: file-service
+          uri: http://file-service:8083
+          predicates:
+            - Path=/api/v1/upload/**,/api/v1/files/**
+          filters:
+            - StripPrefix=0
+
+        - id: ai-processing-service
+          uri: http://ai-processing-service:8084
+          predicates:
+            - Path=/api/v1/processing/**
+          filters:
+            - StripPrefix=0
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/docplatform
+          jwk-set-uri: http://keycloak:8080/realms/docplatform/protocol/openid-connect/certs
+
+loki:
+  url: http://loki:3100/loki/api/v1/push
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces

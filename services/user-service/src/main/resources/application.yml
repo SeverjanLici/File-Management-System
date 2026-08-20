@@ -1,0 +1,61 @@
+server:
+  port: 8081
+  tomcat:
+    max-threads: 4
+    min-spare-threads: 1
+
+spring:
+  application:
+    name: user-service
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/user_db}
+    username: ${SPRING_DATASOURCE_USERNAME:docplatform}
+    password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8085/realms/docplatform}
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8085/realms/docplatform}/protocol/openid-connect/certs
+
+
+services:
+  document-service:
+    url: ${DOCUMENT_SERVICE_URL:http://localhost:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+
+logging:
+  level:
+    com.docplatform: DEBUG
+    org.springframework.security: DEBUG

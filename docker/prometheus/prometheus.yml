@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'docplatform-services'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - 'api-gateway:8080'
+          - 'user-service:8081'
+          - 'document-service:8082'
+          - 'file-service:8083'

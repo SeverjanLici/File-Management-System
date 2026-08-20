@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/user_db
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8080/realms/docplatform
+          jwk-set-uri: http://keycloak:8080/realms/docplatform/protocol/openid-connect/certs
+
+services:
+  document-service:
+    url: http://document-service:8082
+
+loki:
+  url: http://loki:3100/loki/api/v1/push
+
+management:
+  otlp:
+    tracing:
+      endpoint: http://jaeger:4318/v1/traces

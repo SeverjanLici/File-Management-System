@@ -1,0 +1,116 @@
+server:
+  port: 8080
+  tomcat:
+    max-threads: 4
+    min-spare-threads: 1
+
+spring:
+  application:
+    name: api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        # User Service routes
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/users/**,/api/v1/departments/**,/api/v1/roles/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: userServiceCircuitBreaker
+                fallbackUri: forward:/fallback/user-service
+
+        # Document Service routes
+        - id: document-service
+          uri: ${DOCUMENT_SERVICE_URL:http://localhost:8082}
+          predicates:
+            - Path=/api/v1/documents/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: documentServiceCircuitBreaker
+                fallbackUri: forward:/fallback/document-service
+
+        # File upload (TUS) route - no circuit breaker to avoid breaking PATCH chunk uploads
+        - id: file-upload-service
+          uri: ${FILE_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/upload/**
+          filters:
+            - StripPrefix=0
+
+        # File metadata/download routes with circuit breaker
+        - id: file-service
+          uri: ${FILE_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/files/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: fileServiceCircuitBreaker
+                fallbackUri: forward:/fallback/file-service
+
+        # AI Processing Service routes
+        - id: ai-processing-service
+          uri: ${AI_PROCESSING_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/processing/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: aiProcessingServiceCircuitBreaker
+                fallbackUri: forward:/fallback/ai-processing-service
+
+        # AI QA Service routes
+        - id: ai-qa-service
+          uri: ${AI_PROCESSING_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/ai/**
+          filters:
+            - StripPrefix=0
+            - name: CircuitBreaker
+              args:
+                name: aiQAServiceCircuitBreaker
+                fallbackUri: forward:/fallback/ai-qa-service
+
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        - AddRequestHeader=X-Gateway-Timestamp, ${spring.cloud.gateway.routes[0].id}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8085/realms/docplatform}
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8085/realms/docplatform}/protocol/openid-connect/certs
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    org.springframework.security: DEBUG

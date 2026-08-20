@@ -1,0 +1,85 @@
+server:
+  port: 8083
+  tomcat:
+    max-threads: 4
+    min-spare-threads: 1
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: file-service
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/file_db}
+    username: ${SPRING_DATASOURCE_USERNAME:docplatform}
+    password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+
+  servlet:
+    multipart:
+      max-file-size: 1GB
+      max-request-size: 1GB
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8085/realms/docplatform}
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8085/realms/docplatform}/protocol/openid-connect/certs
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+app:
+  kafka:
+    topics:
+      fileUploaded: ${FILE_UPLOADED_TOPIC:file-uploaded}
+      documentDeleted: ${DOCUMENT_DELETED_TOPIC:document-deleted}
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin123}
+  bucket-name: ${MINIO_BUCKET_NAME:documents}
+
+tus:
+  storage-path: ${TUS_STORAGE_PATH:./tus-uploads}
+  upload-uri: /api/v1/upload
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics, prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+  tracing:
+    sampling:
+      probability: 1.0
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
+
+logging:
+  level:
+    com.docplatform: DEBUG
+    me.desair.tus: DEBUG

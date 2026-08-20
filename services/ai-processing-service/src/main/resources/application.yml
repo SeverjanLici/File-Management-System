@@ -1,0 +1,100 @@
+server:
+  port: 8084
+  tomcat:
+    max-threads: 4
+    min-spare-threads: 1
+
+spring:
+  application:
+    name: ai-processing-service
+
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.autoconfigure.retry.SpringAiRetryAutoConfiguration
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/ai_db}
+    username: ${SPRING_DATASOURCE_USERNAME:docplatform}
+    password: ${SPRING_DATASOURCE_PASSWORD:devpassword}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ai-processing-group
+      auto-offset-reset: earliest
+      max-poll-records: 10
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.docplatform.common.event"
+        spring.json.value.default.type: com.docplatform.common.event.FileUploadedEvent
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    topics:
+      fileUploaded: ${FILE_UPLOADED_TOPIC:file-uploaded}
+      documentDeleted: ${DOCUMENT_DELETED_TOPIC:document-deleted}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8085/realms/docplatform}
+          jwk-set-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8085/realms/docplatform}/protocol/openid-connect/certs
+
+  ai:
+    ollama:
+      base-url: ${AI_OLLAMA_BASE_URL:http://localhost:11434}
+      model: ${AI_OLLAMA_MODEL:llama3.2:3b}
+  http:
+    client:
+      connectTimeout: 30000
+      readTimeout: 120000
+      writeTimeout: 120000
+
+app:
+  kafka:
+    topics:
+      fileUploaded: ${FILE_UPLOADED_TOPIC:file-uploaded}
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin123}
+  bucket-name: ${MINIO_BUCKET_NAME:documents}
+
+ai:
+   ollama:
+     enabled: ${AI_OLLAMA_ENABLED:true}
+     base-url: ${AI_OLLAMA_BASE_URL:http://localhost:11434}
+     model: ${AI_OLLAMA_MODEL:llama3.2:3b}
+
+
+services:
+  document-service:
+    url: ${DOCUMENT_SERVICE_URL:http://localhost:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    root: INFO
+    com.docplatform: DEBUG

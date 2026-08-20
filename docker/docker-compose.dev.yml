@@ -1,0 +1,107 @@
+version: '3.8'
+
+# Development compose - extends infrastructure with mounted sources for hot reload
+# Usage: docker-compose -f docker-compose.infra.yml -f docker-compose.dev.yml up
+
+services:
+  postgres:
+    extends:
+      file: docker-compose.infra.yml
+      service: postgres
+
+  minio:
+    extends:
+      file: docker-compose.infra.yml
+      service: minio
+
+  keycloak:
+    extends:
+      file: docker-compose.infra.yml
+      service: keycloak
+
+  # Development services with mounted sources
+  api-gateway:
+    build:
+      context: ../services/api-gateway
+      dockerfile: Dockerfile.dev
+    container_name: docplatform-gateway-dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../services/api-gateway/src:/app/src:ro
+      - gradle_cache:/root/.gradle
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      JAVA_OPTS: "-XX:+UseSerialGC -Xss512k -XX:MaxRAM=256m"
+    depends_on:
+      - keycloak
+    mem_limit: 256m
+
+  user-service:
+    build:
+      context: ../services/user-service
+      dockerfile: Dockerfile.dev
+    container_name: docplatform-user-service-dev
+    ports:
+      - "8081:8081"
+    volumes:
+      - ../services/user-service/src:/app/src:ro
+      - gradle_cache:/root/.gradle
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      JAVA_OPTS: "-XX:+UseSerialGC -Xss512k -XX:MaxRAM=256m"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/user_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+
+  document-service:
+    build:
+      context: ../services/document-service
+      dockerfile: Dockerfile.dev
+    container_name: docplatform-document-service-dev
+    ports:
+      - "8082:8082"
+    volumes:
+      - ../services/document-service/src:/app/src:ro
+      - gradle_cache:/root/.gradle
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      JAVA_OPTS: "-XX:+UseSerialGC -Xss512k -XX:MaxRAM=256m"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/document_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+
+  file-service:
+    build:
+      context: ../services/file-service
+      dockerfile: Dockerfile.dev
+    container_name: docplatform-file-service-dev
+    ports:
+      - "8083:8083"
+    volumes:
+      - ../services/file-service/src:/app/src:ro
+      - gradle_cache:/root/.gradle
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      JAVA_OPTS: "-XX:+UseSerialGC -Xss512k -XX:MaxRAM=384m"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/file_db
+      MINIO_ENDPOINT: http://minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    mem_limit: 384m
+
+volumes:
+  postgres_data:
+  minio_data:
+  gradle_cache:
+
+networks:
+  default:
+    name: docplatform-network
